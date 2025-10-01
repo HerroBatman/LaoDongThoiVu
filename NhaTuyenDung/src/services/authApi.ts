@@ -208,6 +208,19 @@ export async function getMyJobDetailApi(id: string) {
   return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/jobs/${id}`)
 }
 
+export async function updateMyJobApi(id: string, payload: Partial<CreateJobPayload> & { status?: 'draft' | 'open' | 'closed' }) {
+  return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/jobs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteMyJobApi(id: string) {
+  return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/jobs/${id}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function listEmployerSkillsApi() {
   // Public list of skills for employer app
   return fetch(`${API_BASE_URL}/nhatuyendung/skills`, {

@@ -2,7 +2,7 @@ import express from "express";
 import { ntdController } from "../controllers/nhatuyendung.controller.js";
 import { requireNhaTuyenDung } from "../middleware/nhatuyendungAuth.js";
 import { listSkills } from "../controllers/admin.controller.js";
-import { createJob, listMyJobs, getMyJobDetail } from "../controllers/employer.controller.js";
+import { createJob, listMyJobs, getMyJobDetail, updateMyJob, deleteMyJob } from "../controllers/employer.controller.js";
 
 const router = express.Router();
 
@@ -24,6 +24,8 @@ router.get("/skills", listSkills);
 router.post("/jobs", requireNhaTuyenDung, createJob);
 router.get("/jobs", requireNhaTuyenDung, listMyJobs);
 router.get("/jobs/:id", requireNhaTuyenDung, getMyJobDetail);
+router.put("/jobs/:id", requireNhaTuyenDung, updateMyJob);
+router.delete("/jobs/:id", requireNhaTuyenDung, deleteMyJob);
 
 export const nhaTuyenDungRoutes = router;
 

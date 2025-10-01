@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { Menu, MessageCircle, Bell, User } from "lucide-react";
-import { logout } from "../lib/auth";
+import { logout, getCurrentUser } from "../lib/auth";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -9,6 +9,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
+  const user = getCurrentUser() as any;
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
       <div className="flex items-center space-x-4">
@@ -48,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <User size={16} className="text-gray-600" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-900">Nguyễn Văn An</p>
+            <p className="text-sm font-medium text-gray-900">{user?.name || 'Người dùng'}</p>
             <p className="text-xs text-gray-500">Lao động thời vụ</p>
           </div>
           <button

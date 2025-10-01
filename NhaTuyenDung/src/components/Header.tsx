@@ -5,6 +5,19 @@ import { logout } from '../services/authApi';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  // Read employer name from localStorage (prefer server userData)
+  let employerName: string = 'Nhà tuyển dụng';
+  try {
+    const raw = localStorage.getItem('userData');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.name) employerName = parsed.name;
+    }
+  } catch {}
+  if (employerName === 'Nhà tuyển dụng') {
+    const fallback = localStorage.getItem('recruiterName') || localStorage.getItem('userEmail');
+    if (fallback) employerName = fallback;
+  }
 
   const handleLogout = () => {
     logout();
@@ -14,8 +27,8 @@ const Header: React.FC = () => {
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-gray-900">Công ty TNHH ABC</h1>
-        </div>
+          <h1 className="text-2xl font-bold text-gray-900">{employerName}</h1>
+                  </div>
 
         <div className="flex items-center space-x-4">
           {/* Search */}

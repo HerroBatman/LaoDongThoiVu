@@ -1,5 +1,5 @@
 import express from "express";
-import { employerController, employerAuthController, getMyProfile, updateMyProfile, createJob, listMyJobs, getMyJobDetail, listMatchedJobs } from "../controllers/employer.controller.js";
+import { employerController, employerAuthController, getMyProfile, updateMyProfile, createJob, listMyJobs, getMyJobDetail, listMatchedJobs, updateMyJob, deleteMyJob } from "../controllers/employer.controller.js";
 import { requireEmployer } from "../middleware/employerAuth.js";
 
 const router = express.Router();
@@ -32,6 +32,8 @@ router.put("/me", requireEmployer, updateMyProfile);
 router.post("/jobs", requireEmployer, createJob);
 router.get("/jobs", requireEmployer, listMyJobs);
 router.get("/jobs/:id", requireEmployer, getMyJobDetail);
+router.put("/jobs/:id", requireEmployer, updateMyJob);
+router.delete("/jobs/:id", requireEmployer, deleteMyJob);
 router.get("/matched-jobs", requireEmployer, listMatchedJobs);
 
 export const employerRoutes = router;

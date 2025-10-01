@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Search, Filter, MapPin, Clock, DollarSign, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, MapPin, Clock, DollarSign } from "lucide-react";
 import { listOpenJobs } from "../lib/api";
 
 const JobList = () => {
@@ -20,7 +20,7 @@ const JobList = () => {
       setLoading(true);
       setError("");
       try {
-        const res = await listOpenJobs();
+        const res = await listOpenJobs({ strictOnly: true });
         if (res.success) setJobs(res.data || []);
         else setError(res.message || 'Lỗi khi tải việc làm');
       } catch (e: any) {
@@ -40,6 +40,13 @@ const JobList = () => {
         </h1>
         <p className="text-gray-600">{jobs.length} việc làm phù hợp</p>
       </div>
+
+      {loading && (
+        <div className="text-gray-600">Đang tải việc làm...</div>
+      )}
+      {!!error && (
+        <div className="text-red-600">{error}</div>
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

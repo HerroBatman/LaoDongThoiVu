@@ -206,6 +206,37 @@ export const getMyJobDetail = async (req, res) => {
     }
 }
 
+// Update my job (status or basic fields)
+export const updateMyJob = async (req, res) => {
+    try {
+        const { Job } = await import('../models/job.model.js');
+        const { id } = req.params;
+        const allowed = ['status', 'title', 'description', 'location', 'address', 'requirements', 'skills', 'salaryMin', 'salaryMax', 'salaryUnit', 'salaryText', 'startDate', 'endDate', 'startTime', 'endTime', 'workersNeeded', 'recruitmentMode'];
+        const update = {};
+        for (const key of allowed) {
+            if (key in req.body) update[key] = req.body[key];
+        }
+        const job = await Job.findOneAndUpdate({ _id: id, employer: req.user.userId }, update, { new: true, runValidators: true });
+        if (!job) return res.status(404).json({ success: false, message: 'Không tìm thấy công việc' });
+        return res.status(200).json({ success: true, data: job });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// Delete my job
+export const deleteMyJob = async (req, res) => {
+    try {
+        const { Job } = await import('../models/job.model.js');
+        const { id } = req.params;
+        const job = await Job.findOneAndDelete({ _id: id, employer: req.user.userId });
+        if (!job) return res.status(404).json({ success: false, message: 'Không tìm thấy công việc' });
+        return res.status(200).json({ success: true, message: 'Đã xoá công việc' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
 // List jobs matched to current worker's skills
 export const listMatchedJobs = async (req, res) => {
     try {

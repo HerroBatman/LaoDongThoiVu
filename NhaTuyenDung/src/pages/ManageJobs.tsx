@@ -1,17 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { listMyJobsApi } from "../services/authApi";
-import {
-  Search,
-  Filter,
-  Edit3,
-  Pause,
-  Trash2,
-  Eye,
-  MapPin,
-  Calendar,
-  Users,
-  Clock,
-} from "lucide-react";
+import { listMyJobsApi, updateMyJobApi, deleteMyJobApi } from "../services/authApi";
+import { Search, Filter, Edit3, Pause, Trash2, Eye, MapPin, Calendar, Clock } from "lucide-react";
 
 const ManageJobs: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -42,6 +31,41 @@ const ManageJobs: React.FC = () => {
     load();
   }, [pagination.page, pagination.limit, filterStatus, searchTerm]);
 
+  const handlePause = async (job: any) => {
+    try {
+      setLoading(true)
+      await updateMyJobApi(job._id || job.id, { status: job.status === 'open' ? 'closed' : 'open' })
+      // reload current page
+      const res = await listMyJobsApi({ page: pagination.page, limit: pagination.limit, status: filterStatus !== 'all' ? filterStatus : '', search: searchTerm || '' })
+      if (res.success) {
+        setJobs(res.data || [])
+        setPagination(res.pagination || pagination)
+      }
+    } catch (e: any) {
+      setError(e.message || 'Lỗi khi cập nhật trạng thái')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (job: any) => {
+    try {
+      if (!confirm('Bạn có chắc chắn muốn xoá công việc này?')) return
+      setLoading(true)
+      await deleteMyJobApi(job._id || job.id)
+      // reload current page
+      const res = await listMyJobsApi({ page: pagination.page, limit: pagination.limit, status: filterStatus !== 'all' ? filterStatus : '', search: searchTerm || '' })
+      if (res.success) {
+        setJobs(res.data || [])
+        setPagination(res.pagination || pagination)
+      }
+    } catch (e: any) {
+      setError(e.message || 'Lỗi khi xoá công việc')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "recruiting":
@@ -59,6 +83,12 @@ const ManageJobs: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {loading && (
+        <div className="text-gray-600">Đang tải...</div>
+      )}
+      {!!error && (
+        <div className="text-red-600">{error}</div>
+      )}
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
@@ -194,10 +224,10 @@ const ManageJobs: React.FC = () => {
                       <button className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition-colors">
                         <Edit3 className="w-4 h-4" />
                       </button>
-                      <button className="p-1 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded transition-colors">
+                      <button onClick={() => handlePause(job)} className="p-1 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded transition-colors">
                         <Pause className="w-4 h-4" />
                       </button>
-                      <button className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors">
+                      <button onClick={() => handleDelete(job)} className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

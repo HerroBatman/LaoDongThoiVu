@@ -121,16 +121,24 @@ export async function updateMyProfile(payload: { experienceDescription?: string;
 }
 
 // ============ JOB LISTING FOR WORKERS ============
-export async function listOpenJobs(params?: { page?: number; limit?: number; search?: string }) {
+export async function listOpenJobs(params?: { page?: number; limit?: number; search?: string; strictOnly?: boolean }) {
   const q = new URLSearchParams()
   if (params?.page) q.append('page', String(params.page))
   if (params?.limit) q.append('limit', String(params.limit))
   if (params?.search) q.append('search', params.search)
   // Prefer matched jobs endpoint for logged-in workers; fallback to public if needed
   try {
-    return await api.get(`/employer/matched-jobs?${q.toString()}`)
+    const matched = await api.get(`/employer/matched-jobs?${q.toString()}`)
+    if (params?.strictOnly) {
+      return matched
+    }
+    if (matched?.success && Array.isArray((matched as any).data) && (matched as any).data.length === 0) {
+      // Fallback to public open jobs when no matches are available
+      return api.get(`/public/jobs?${q.toString()}`)
+    }
+    return matched
   } catch (e) {
-    return api.get(`/public/jobs?${q.toString()}`)
+    return params?.strictOnly ? { success: true, data: [] } as any : api.get(`/public/jobs?${q.toString()}`)
   }
 }
 
