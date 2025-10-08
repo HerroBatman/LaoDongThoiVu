@@ -41,16 +41,6 @@ const CreateJob: React.FC = () => {
       } catch {}
     };
     loadSkills();
-    // preset defaults matching placeholders
-    setTitle("Phụ bếp nhà hàng - Ca tối");
-    setDescription("Hỗ trợ bếp trưởng chuẩn bị món ăn, rửa chén bát, dọn dẹp bếp. Làm việc ca tối từ 17:00 - 23:00. Nhà hàng chuyên món Việt, môi trường làm việc thân thiện.");
-    setAddress("123 Đường Nguyễn Thị Minh Khai, Q.1, TP.HCM");
-    setStartDate("2024-12-25");
-    setEndDate("2024-12-25");
-    setStartTime("17:00");
-    setEndTime("23:00");
-    setWorkersNeeded(3);
-    setSalaryText("150,000 VNĐ/ca");
   }, []);
 
   const addRequirement = () => {
@@ -107,7 +97,7 @@ const CreateJob: React.FC = () => {
             e.preventDefault();
             try {
               setLoading(true);
-              const payload = {
+              const payload: any = {
                 title,
                 description,
                 location: address,
@@ -121,7 +111,7 @@ const CreateJob: React.FC = () => {
                 endTime: endTime || undefined,
                 workersNeeded,
                 recruitmentMode: jobType as any,
-                status: 'open'
+                status: 'open' as const
               };
               const res = await createJobApi(payload);
               if (res.success) showToast('success', 'Đăng tuyển thành công');
@@ -400,7 +390,7 @@ const CreateJob: React.FC = () => {
 
         {/* Preview & Tips */}
         <div className="space-y-6">
-          {/* Job Preview */}
+            {/* Job Preview */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-4">
               Xem trước tin đăng
@@ -408,23 +398,19 @@ const CreateJob: React.FC = () => {
             <div className="space-y-3 text-sm">
               <div>
                 <span className="font-medium text-gray-700">Công việc:</span>
-                <p className="text-gray-600">Phụ bếp nhà hàng - Ca tối</p>
+                <p className="text-gray-600">{title || '—'}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Thời gian:</span>
-                <p className="text-gray-600">25/12/2024, 17:00 - 23:00</p>
+                <p className="text-gray-600">{startDate ? new Date(startDate).toLocaleDateString('vi-VN') : '—'}{startTime || endTime ? `, ${startTime || '—'} - ${endTime || '—'}` : ''}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Địa điểm:</span>
-                <p className="text-gray-600">
-                  123 Đường Nguyễn Thị Minh Khai, Q.1, TP.HCM
-                </p>
+                <p className="text-gray-600">{address || '—'}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Lương:</span>
-                <p className="text-gray-600 font-semibold text-green-600">
-                  150,000 VNĐ/ca
-                </p>
+                <p className="text-gray-600 font-semibold text-green-600">{salaryText || '—'}</p>
               </div>
             </div>
           </div>

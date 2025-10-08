@@ -40,7 +40,7 @@ export default function Login() {
             localStorage.setItem('userData', JSON.stringify(response.data))
           }
           
-          navigate('/dashboard')
+          navigate('/')
         } else {
           setError(response.message || 'Đăng nhập thất bại')
         }

@@ -1,5 +1,5 @@
-// API Configuration
-const API_BASE_URL = 'http://localhost:8080/api/v1'
+// API Configuration: use Vite proxy in dev to avoid CORS
+const API_BASE_URL = '/api/v1'
 
 // Request/Response Interfaces
 export interface LoginRequest {
@@ -202,6 +202,21 @@ export async function listMyJobsApi(params?: { page?: number; limit?: number; st
   if (params?.status) q.append('status', params.status)
   if (params?.search) q.append('search', params.search)
   return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/jobs?${q.toString()}`)
+}
+
+export async function listJobsProgressApi(params?: { page?: number; limit?: number; search?: string }) {
+  const q = new URLSearchParams()
+  if (params?.page) q.append('page', String(params.page))
+  if (params?.limit) q.append('limit', String(params.limit))
+  if (params?.search) q.append('search', params.search)
+  return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/jobs-progress?${q.toString()}`)
+}
+
+export async function markApplicationAttendanceApi(id: string, action: 'checkin' | 'checkout') {
+  return authenticatedRequest(`${API_BASE_URL}/nhatuyendung/applications/${id}/attendance`, {
+    method: 'POST',
+    body: JSON.stringify({ action })
+  })
 }
 
 export async function getMyJobDetailApi(id: string) {

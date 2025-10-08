@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Eye,
@@ -60,10 +60,10 @@ export default function AccountManagement() {
           search: searchTerm || undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
         });
-        if (response.success) {
-          setWorkers(response.data);
-          setPagination(response.pagination);
-          setStats(response.stats);
+        if (response.success && response.data) {
+          setWorkers(response.data.data || []);
+          setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
+          setStats(response.data.stats || null);
         } else {
           setError(response.message || "Lỗi khi tải danh sách người lao động");
         }
@@ -74,10 +74,10 @@ export default function AccountManagement() {
           search: searchTerm || undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
         });
-        if (response.success) {
-          setEmployers(response.data);
-          setPagination(response.pagination);
-          setStats(response.stats);
+        if (response.success && response.data) {
+          setEmployers(response.data.data || []);
+          setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
+          setStats(response.data.stats || null);
         } else {
           setError(response.message || "Lỗi khi tải danh sách nhà tuyển dụng");
         }

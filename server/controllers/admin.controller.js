@@ -785,6 +785,62 @@ export const adminApproveJob = async (req, res) => {
     }
 }
 
+// ===== Progress: list approved jobs with applicants for Admin =====
+export const adminListProgress = async (req, res) => {
+  try {
+    const { Job } = await import('../models/job.model.js');
+    const { JobApplication } = await import('../models/jobApplication.model.js');
+    const { Employer } = await import('../models/employer.model.js');
+
+    const { date = '', search = '', employerId = '' } = req.query;
+    const query = { status: 'open' };
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { address: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (employerId) query.employer = employerId;
+    if (date) {
+      // match by same day string if startDate provided
+      query.startDate = new Date(date);
+    }
+
+    const jobs = await Job.find(query).sort({ createdAt: -1 }).lean();
+    const jobIds = jobs.map(j => j._id);
+    const employers = await Employer.find({ _id: { $in: jobs.map(j => j.employer) } }).select('name email phone').lean();
+    const empMap = new Map(employers.map(e => [String(e._id), e]));
+
+    const apps = await JobApplication.find({ job: { $in: jobIds } })
+      .populate('worker', 'name email phone')
+      .lean();
+    const jobIdToApplicants = new Map();
+    for (const a of apps) {
+      const arr = jobIdToApplicants.get(String(a.job)) || [];
+      arr.push({ _id: a._id, worker: a.worker, status: a.status || 'applied', createdAt: a.createdAt });
+      jobIdToApplicants.set(String(a.job), arr);
+    }
+
+    const data = jobs.map(j => ({
+      _id: j._id,
+      title: j.title,
+      employer: empMap.get(String(j.employer)) || null,
+      address: j.address,
+      location: j.location,
+      startDate: j.startDate,
+      endDate: j.endDate,
+      startTime: j.startTime,
+      endTime: j.endTime,
+      applicants: jobIdToApplicants.get(String(j._id)) || [],
+    }));
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export const adminRejectJob = async (req, res) => {
     try {
         const { Job } = await import('../models/job.model.js');

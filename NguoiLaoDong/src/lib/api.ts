@@ -142,4 +142,17 @@ export async function listOpenJobs(params?: { page?: number; limit?: number; sea
   }
 }
 
+// ============ APPLICATIONS / SCHEDULE ==========
+export async function applyToJob(jobId: string) {
+  return api.post(`/employer/jobs/${jobId}/apply`)
+}
+
+export async function getMySchedule() {
+  return api.get(`/employer/me/schedule`)
+}
+
+export async function markMyAttendance(applicationId: string, action: 'checkin' | 'checkout') {
+  return api.post(`/employer/me/applications/${applicationId}/attendance`, { action })
+}
+
 

@@ -13,7 +13,7 @@ import {
     getUserStats,
 } from "../controllers/admin.controller.js";
 import { requireAdmin, requirePermission } from "../middleware/adminAuth.js";
-import { listSkills, createSkill, updateSkill, deleteSkill, listWorkerCompetencies, createWorkerCompetency, updateWorkerCompetency, deleteWorkerCompetency, adminListJobs, adminApproveJob, adminRejectJob, adminListJobInvites } from "../controllers/admin.controller.js";
+import { listSkills, createSkill, updateSkill, deleteSkill, listWorkerCompetencies, createWorkerCompetency, updateWorkerCompetency, deleteWorkerCompetency, adminListJobs, adminApproveJob, adminRejectJob, adminListJobInvites, adminListProgress } from "../controllers/admin.controller.js";
 
 const router = express.Router();
 
@@ -103,6 +103,9 @@ router.get("/dashboard/stats", requirePermission("view_reports"), async (req, re
         });
     }
 });
+
+// Progress overview for admin
+router.get("/progress", adminListProgress);
 
 router.get("/dashboard/activities", requirePermission("view_reports"), async (req, res) => {
     try {

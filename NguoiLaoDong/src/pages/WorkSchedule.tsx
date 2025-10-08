@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   List,
@@ -12,68 +12,41 @@ import {
   DollarSign,
 } from "lucide-react";
 
+import { getMySchedule, markMyAttendance } from "../lib/api";
+
 const WorkSchedule = () => {
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
   const [showReminder, setShowReminder] = useState(false);
   const [upcomingShift, setUpcomingShift] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [serverShifts, setServerShifts] = useState<any[]>([]);
 
-  const workSchedule = [
-    {
-      id: 1,
-      title: "Nhân viên phục vụ",
-      company: "Highlands Coffee",
-      location: "Quận 1, TP.HCM",
-      startTime: "08:00",
-      endTime: "17:00",
-      date: "2024-01-15",
-      salary: "150,000đ",
-      status: "upcoming",
-    },
-    {
-      id: 2,
-      title: "Công nhân bốc vác",
-      company: "Viettel Post",
-      location: "Quận 7, TP.HCM",
-      startTime: "06:00",
-      endTime: "14:00",
-      date: "2024-01-16",
-      salary: "200,000đ",
-      status: "upcoming",
-    },
-    {
-      id: 3,
-      title: "Nhân viên bán hàng",
-      company: "Saigon Co.op",
-      location: "Quận 3, TP.HCM",
-      startTime: "09:00",
-      endTime: "18:00",
-      date: "2024-01-17",
-      salary: "180,000đ",
-      status: "in-progress",
-    },
-    {
-      id: 4,
-      title: "Shipper giao đồ ăn",
-      company: "GrabFood",
-      location: "Quận 5, TP.HCM",
-      startTime: "11:00",
-      endTime: "14:00",
-      date: "2024-01-13",
-      salary: "180,000đ",
-      status: "completed",
-    },
-    {
-      id: 5,
-      title: "Nhân viên dọn vệ sinh",
-      company: "Clean Pro",
-      location: "Quận 1, TP.HCM",
-      startTime: "18:00",
-      endTime: "22:00",
-      date: "2024-01-18",
-      salary: "120,000đ",
-      status: "upcoming",
-    },
-  ];
+  const apiShifts = serverShifts.map((s) => ({
+    id: s._id,
+    title: s.title,
+    company: s.company || "Nhà tuyển dụng",
+    location: s.location,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    date: s.startDate ? new Date(s.startDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+    salary: s.salaryText || "",
+    status: "upcoming",
+  }));
+
+  const workSchedule = apiShifts;
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await getMySchedule();
+        if (res.success) setServerShifts((res as any).data || []);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   // Simulate reminder popup for upcoming shifts
   useEffect(() => {
@@ -142,22 +115,70 @@ const WorkSchedule = () => {
     }
   };
 
+  // ----- Calendar month navigation & helpers -----
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+  const monthTitle = currentMonthDate.toLocaleDateString("vi-VN", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const goPrevMonth = () => {
+    setCurrentMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  };
+  const goNextMonth = () => {
+    setCurrentMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  };
+
+  const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
+  const toISODate = (y: number, m0: number, d: number) => `${y}-${pad2(m0 + 1)}-${pad2(d)}`;
+
   const upcomingShifts = workSchedule.filter(
     (shift) => shift.status === "upcoming"
   );
-  const todayShifts = workSchedule.filter((shift) => {
-    const today = new Date().toISOString().split("T")[0];
-    return shift.date === today;
-  });
+  const todayISO = new Date().toISOString().split("T")[0];
+  const todayShifts = workSchedule.filter((shift) => shift.date === todayISO);
 
-  const handleCheckIn = (shiftId: number) => {
-    // Handle check-in logic
-    console.log("Check-in for shift:", shiftId);
+  const toMinutes = (hhmm?: string) => {
+    if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+    const [h, m] = hhmm.split(":").map((n: string) => parseInt(n, 10));
+    return h * 60 + m;
+  };
+  const nowMinutes = () => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
   };
 
-  const handleCheckOut = (shiftId: number) => {
-    // Handle check-out logic
-    console.log("Check-out for shift:", shiftId);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const handleCheckIn = async (applicationId: any, startTime?: string) => {
+    const now = nowMinutes();
+    const start = toMinutes(startTime || "");
+    if (start != null && now < start) {
+      setToast("Chưa đến giờ bắt đầu để check-in");
+      window.setTimeout(() => setToast(null), 2000);
+      return;
+    }
+    await markMyAttendance(String(applicationId), 'checkin');
+    // reload schedule
+    const res = await getMySchedule();
+    if ((res as any).success) setServerShifts((res as any).data || []);
+    setToast("Check-in thành công");
+    window.setTimeout(() => setToast(null), 2000);
+  };
+
+  const handleCheckOut = async (applicationId: any, endTime?: string) => {
+    const now = nowMinutes();
+    const end = toMinutes(endTime || "");
+    if (end != null && now < end) {
+      setToast("Chưa đến giờ kết thúc để check-out");
+      window.setTimeout(() => setToast(null), 2000);
+      return;
+    }
+    await markMyAttendance(String(applicationId), 'checkout');
+    const res = await getMySchedule();
+    if ((res as any).success) setServerShifts((res as any).data || []);
+    setToast("Check-out thành công");
+    window.setTimeout(() => setToast(null), 2000);
   };
 
   const ReminderPopup = () => {
@@ -228,6 +249,21 @@ const WorkSchedule = () => {
       </div>
     );
   };
+
+  // Data fetch from server for schedule
+  // (state declared above)
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await getMySchedule();
+        if (res.success) setServerShifts((res as any).data || []);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -300,21 +336,23 @@ const WorkSchedule = () => {
         </div>
       )}
 
-      {viewMode === "calendar" ? (
+      {loading ? (
+        <div className="text-gray-600">Đang tải lịch làm việc...</div>
+      ) : workSchedule.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-600">
+          Chưa có ca nào. Hãy ứng tuyển để thêm vào lịch làm việc.
+        </div>
+      ) : viewMode === "calendar" ? (
         /* Calendar View */
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                Tháng 1, 2024
+                {monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1)}
               </h2>
               <div className="flex space-x-2">
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">
-                  ← Trước
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">
-                  Sau →
-                </button>
+                <button onClick={goPrevMonth} className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">← Trước</button>
+                <button onClick={goNextMonth} className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors">Sau →</button>
               </div>
             </div>
           </div>
@@ -330,50 +368,54 @@ const WorkSchedule = () => {
               ))}
             </div>
             <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 35 }, (_, i) => {
-                const dayNumber = i - 6 + 1;
-                const isCurrentMonth = dayNumber > 0 && dayNumber <= 31;
-                const dayShifts = workSchedule.filter((shift) => {
-                  const shiftDay = new Date(shift.date).getDate();
-                  return shiftDay === dayNumber && isCurrentMonth;
-                });
+              {(() => {
+                const y = currentMonthDate.getFullYear();
+                const m0 = currentMonthDate.getMonth();
+                const first = new Date(y, m0, 1);
+                const startWeekday = first.getDay(); // 0=CN
+                const daysInMonth = new Date(y, m0 + 1, 0).getDate();
+                const totalCells = 42; // 6 rows x 7 cols
+                return Array.from({ length: totalCells }, (_, i) => {
+                  const dayNumber = i - startWeekday + 1;
+                  const isCurrentMonth = dayNumber > 0 && dayNumber <= daysInMonth;
+                  const iso = isCurrentMonth ? toISODate(y, m0, dayNumber) : null;
+                  const dayShifts = isCurrentMonth
+                    ? workSchedule.filter((s) => s.date && String(s.date).slice(0, 10) === iso)
+                    : [];
 
-                return (
-                  <div
-                    key={i}
-                    className={`min-h-20 border border-gray-200 rounded p-1 ${
-                      isCurrentMonth
-                        ? "bg-white hover:bg-gray-50"
-                        : "bg-gray-50"
-                    } ${
-                      dayShifts.length > 0 ? "bg-blue-50 border-blue-200" : ""
-                    } transition-colors cursor-pointer`}
-                  >
-                    {isCurrentMonth && (
-                      <>
-                        <div className="text-sm font-medium text-gray-900 mb-1">
-                          {dayNumber}
-                        </div>
-                        {dayShifts.map((shift, index) => (
-                          <div key={index} className="text-xs mb-1">
-                            <div
-                              className={`px-1 py-0.5 rounded text-white text-center ${
-                                shift.status === "upcoming"
-                                  ? "bg-blue-500"
-                                  : shift.status === "in-progress"
-                                  ? "bg-green-500"
-                                  : "bg-gray-500"
-                              }`}
-                            >
-                              {shift.startTime}
-                            </div>
+                  return (
+                    <div
+                      key={i}
+                      className={`min-h-20 border border-gray-200 rounded p-1 ${
+                        isCurrentMonth ? "bg-white hover:bg-gray-50" : "bg-gray-50"
+                      } ${dayShifts.length > 0 ? "bg-blue-50 border-blue-200" : ""} transition-colors`}
+                    >
+                      {isCurrentMonth && (
+                        <>
+                          <div className="text-sm font-medium text-gray-900 mb-1">
+                            {dayNumber}
                           </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                          {dayShifts.map((shift, index) => (
+                            <div key={index} className="text-[11px] mb-1">
+                              <div
+                                className={`px-1 py-0.5 rounded text-white text-center ${
+                                  shift.status === "upcoming"
+                                    ? "bg-blue-500"
+                                    : shift.status === "in-progress"
+                                    ? "bg-green-500"
+                                    : "bg-gray-500"
+                                }`}
+                              >
+                                {shift.startTime} - {shift.endTime}
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
@@ -431,7 +473,7 @@ const WorkSchedule = () => {
                       {shift.status === "upcoming" && (
                         <>
                           <button
-                            onClick={() => handleCheckIn(shift.id)}
+                            onClick={() => handleCheckIn(shift.id, shift.startTime)}
                             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                           >
                             Check-in
@@ -444,7 +486,7 @@ const WorkSchedule = () => {
                       {shift.status === "in-progress" && (
                         <>
                           <button
-                            onClick={() => handleCheckOut(shift.id)}
+                            onClick={() => handleCheckOut(shift.id, shift.endTime)}
                             className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                           >
                             Check-out
@@ -470,6 +512,11 @@ const WorkSchedule = () => {
 
       {/* Reminder Popup */}
       <ReminderPopup />
+      {toast && (
+        <div className="fixed right-4 bottom-4 z-50 px-4 py-3 rounded-lg shadow bg-green-600 text-white">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };

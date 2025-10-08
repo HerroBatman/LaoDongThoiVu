@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, MapPin, Clock, DollarSign } from "lucide-react";
-import { listOpenJobs } from "../lib/api";
+import { listOpenJobs, applyToJob } from "../lib/api";
 
 const JobList = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +14,7 @@ const JobList = () => {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -162,8 +163,25 @@ const JobList = () => {
                 </div>
               </div>
 
-              <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                Ứng tuyển ngay
+              <button
+                onClick={async () => {
+                  if (applyingId) return;
+                  setApplyingId(job._id);
+                  try {
+                    const res = await applyToJob(job._id);
+                    if (res.success) {
+                      alert("Ứng tuyển thành công và đã thêm vào lịch làm việc");
+                    }
+                  } catch (e: any) {
+                    alert(e?.message || "Ứng tuyển thất bại");
+                  } finally {
+                    setApplyingId(null);
+                  }
+                }}
+                disabled={applyingId === job._id}
+                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-60"
+              >
+                {applyingId === job._id ? "Đang xử lý..." : "Ứng tuyển ngay"}
               </button>
             </div>
           </div>

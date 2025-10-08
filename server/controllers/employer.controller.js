@@ -195,6 +195,86 @@ export const listMyJobs = async (req, res) => {
     }
 }
 
+// For NTD progress view: list my approved (open) jobs with applicants
+export const listMyJobsProgress = async (req, res) => {
+    try {
+        const { Job } = await import('../models/job.model.js');
+        const { JobApplication } = await import('../models/jobApplication.model.js');
+        const { page = 1, limit = 10, search = '' } = req.query;
+        const query = { employer: req.user.userId, status: 'open' };
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+                { address: { $regex: search, $options: 'i' } },
+            ];
+        }
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const [items, total] = await Promise.all([
+            Job.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+            Job.countDocuments(query),
+        ]);
+
+        const jobIds = items.map(j => j._id);
+        const apps = await JobApplication.find({ job: { $in: jobIds } })
+            .populate('worker', 'name email phone');
+        const jobIdToApplicants = new Map();
+        for (const a of apps) {
+            const arr = jobIdToApplicants.get(String(a.job)) || [];
+            arr.push({
+                _id: a._id,
+                worker: a.worker,
+                status: a.status || 'applied',
+                createdAt: a.createdAt,
+                checkInAt: a.checkInAt,
+                checkOutAt: a.checkOutAt,
+            });
+            jobIdToApplicants.set(String(a.job), arr);
+        }
+
+        const data = items.map(j => ({
+            _id: j._id,
+            title: j.title,
+            address: j.address,
+            location: j.location,
+            startDate: j.startDate,
+            endDate: j.endDate,
+            startTime: j.startTime,
+            endTime: j.endTime,
+            status: j.status,
+            applicants: jobIdToApplicants.get(String(j._id)) || [],
+        }));
+
+        return res.status(200).json({ success: true, data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// NTD: mark applicant check-in/out
+export const markApplicantAttendance = async (req, res) => {
+    try {
+        const { JobApplication } = await import('../models/jobApplication.model.js');
+        const { id } = req.params; // application id
+        const { action } = req.body; // 'checkin' | 'checkout'
+        const app = await JobApplication.findById(id).populate('job');
+        if (!app) return res.status(404).json({ success: false, message: 'Không tìm thấy ứng tuyển' });
+
+        if (action === 'checkin') {
+            app.checkInAt = new Date();
+            app.status = 'accepted';
+        } else if (action === 'checkout') {
+            app.checkOutAt = new Date();
+        } else {
+            return res.status(400).json({ success: false, message: 'Hành động không hợp lệ' });
+        }
+        await app.save();
+        return res.status(200).json({ success: true, data: app });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
 export const getMyJobDetail = async (req, res) => {
     try {
         const { Job } = await import('../models/job.model.js');
@@ -265,6 +345,110 @@ export const listMatchedJobs = async (req, res) => {
             Job.countDocuments(query),
         ]);
         return res.status(200).json({ success: true, data: items, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// ============ Worker applies to a job and conflict check ============
+export const applyToJob = async (req, res) => {
+    try {
+        console.log("Vào")
+        const { Job } = await import('../models/job.model.js');
+        const { JobApplication } = await import('../models/jobApplication.model.js');
+
+        const { jobId } = req.params;
+        const job = await Job.findById(jobId);
+        if (!job || job.status !== 'open') {
+            return res.status(404).json({ success: false, message: 'Công việc không còn mở ứng tuyển' });
+        }
+
+        // Fetch existing accepted/applied applications of this worker overlapping time
+        const myApps = await JobApplication.find({ worker: req.user.userId, status: { $in: ['applied', 'accepted'] } });
+
+        const conflicts = [];
+        const jobStartTime = job.startTime || '';
+        const jobEndTime = job.endTime || '';
+        for (const a of myApps) {
+            // If the date range overlaps (if dates exist), and time overlaps
+            const sameDateRange = true; // simple same-day/unknown-day assumption for MVP
+            if (sameDateRange) {
+                const aStart = a.startTime || '';
+                const aEnd = a.endTime || '';
+                if (aStart && aEnd && jobStartTime && jobEndTime) {
+                    const overlap = !(jobEndTime <= aStart || jobStartTime >= aEnd);
+                    if (overlap) conflicts.push(a);
+                }
+            }
+        }
+
+        if (conflicts.length > 0) {
+            return res.status(409).json({ success: false, message: 'Thời gian làm việc bị trùng với công việc khác' });
+        }
+
+        const created = await JobApplication.create({
+            worker: req.user.userId,
+            job: job._id,
+            status: 'applied',
+            startDate: job.startDate,
+            endDate: job.endDate,
+            startTime: job.startTime,
+            endTime: job.endTime,
+        });
+
+        return res.status(201).json({ success: true, data: created });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// List my schedule (applications as shifts)
+export const listMySchedule = async (req, res) => {
+    try {
+        const { JobApplication } = await import('../models/jobApplication.model.js');
+        const { Job } = await import('../models/job.model.js');
+        const apps = await JobApplication.find({ worker: req.user.userId, status: { $in: ['applied', 'accepted'] } })
+            .sort({ createdAt: -1 })
+            .populate('job');
+        const schedule = apps.map(a => ({
+            _id: a._id,
+            jobId: a.job?._id,
+            title: a.job?.title,
+            company: a.job?.employer?.name,
+            location: a.job?.address || a.job?.location,
+            startTime: a.startTime || a.job?.startTime,
+            endTime: a.endTime || a.job?.endTime,
+            startDate: a.startDate || a.job?.startDate,
+            endDate: a.endDate || a.job?.endDate,
+            salaryText: a.job?.salaryText,
+            checkInAt: a.checkInAt,
+            checkOutAt: a.checkOutAt,
+        }));
+        return res.status(200).json({ success: true, data: schedule });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// Worker self: check-in / check-out my application (by application id)
+export const selfAttendance = async (req, res) => {
+    try {
+        const { JobApplication } = await import('../models/jobApplication.model.js');
+        const { id } = req.params; // application id
+        const { action } = req.body; // 'checkin' | 'checkout'
+        const app = await JobApplication.findOne({ _id: id, worker: req.user.userId });
+        if (!app) return res.status(404).json({ success: false, message: 'Không tìm thấy ca của bạn' });
+        if (action === 'checkin') {
+            app.checkInAt = new Date();
+            app.status = 'accepted';
+        } else if (action === 'checkout') {
+            app.checkOutAt = new Date();
+        } else {
+            return res.status(400).json({ success: false, message: 'Hành động không hợp lệ' });
+        }
+        await app.save();
+        return res.status(200).json({ success: true, data: { checkInAt: app.checkInAt, checkOutAt: app.checkOutAt } });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

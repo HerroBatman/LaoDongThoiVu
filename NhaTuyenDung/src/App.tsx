@@ -23,12 +23,9 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
 
-        {/* Default route redirects to login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
         {/* Protected routes */}
         <Route
-          path="/dashboard"
+          path="/"
           element={
             <ProtectedRoute>
               <Layout>

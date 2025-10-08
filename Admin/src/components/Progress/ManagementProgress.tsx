@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Search,
   Filter,
@@ -10,88 +10,33 @@ import {
   Clock,
   Send,
 } from "lucide-react";
+import { getWorkProgress } from "../../lib/api";
 
 export default function ProgressManagement() {
-  const [selectedDate, setSelectedDate] = useState("2024-03-15");
+  const [selectedDate, setSelectedDate] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [employerFilter, setEmployerFilter] = useState("all");
 
-  const workShifts = [
-    {
-      id: 1,
-      jobTitle: "Phụ bếp nhà hàng ABC",
-      employer: "Nhà hàng ABC",
-      location: "Quận 1, TP.HCM",
-      shift: "08:00 - 17:00",
-      workers: [
-        {
-          id: 1,
-          name: "Nguyễn Văn An",
-          status: "checked-in",
-          checkinTime: "07:55",
-          checkoutTime: null,
-        },
-        {
-          id: 2,
-          name: "Trần Thị Bình",
-          status: "checked-out",
-          checkinTime: "08:02",
-          checkoutTime: "17:05",
-        },
-        {
-          id: 3,
-          name: "Lê Văn Cường",
-          status: "not-arrived",
-          checkinTime: null,
-          checkoutTime: null,
-        },
-        {
-          id: 4,
-          name: "Phạm Thị Dung",
-          status: "checked-in",
-          checkinTime: "08:10",
-          checkoutTime: null,
-        },
-        {
-          id: 5,
-          name: "Hoàng Văn Em",
-          status: "checked-in",
-          checkinTime: "07:58",
-          checkoutTime: null,
-        },
-      ],
-    },
-    {
-      id: 2,
-      jobTitle: "Bốc vác kho hàng",
-      employer: "Công ty Logistics XYZ",
-      location: "Quận 7, TP.HCM",
-      shift: "06:00 - 14:00",
-      workers: [
-        {
-          id: 6,
-          name: "Võ Văn Phúc",
-          status: "checked-out",
-          checkinTime: "05:55",
-          checkoutTime: "14:02",
-        },
-        {
-          id: 7,
-          name: "Đặng Thị Giang",
-          status: "checked-out",
-          checkinTime: "06:05",
-          checkoutTime: "14:10",
-        },
-        {
-          id: 8,
-          name: "Bùi Văn Hải",
-          status: "not-arrived",
-          checkinTime: null,
-          checkoutTime: null,
-        },
-      ],
-    },
-  ];
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getWorkProgress(selectedDate || undefined, {});
+        if (res.success) setJobs(res.data || []);
+        else setError(res.message || "Không tải được tiến độ");
+      } catch (e: any) {
+        setError(e.message || "Không tải được tiến độ");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [selectedDate]);
 
   const getWorkerStatusBadge = (status: string) => {
     switch (status) {
@@ -121,38 +66,17 @@ export default function ProgressManagement() {
     }
   };
 
-  const getShiftStatus = (workers: any[]) => {
-    const checkedIn = workers.filter((w) => w.status === "checked-in").length;
-    const checkedOut = workers.filter((w) => w.status === "checked-out").length;
-    const notArrived = workers.filter((w) => w.status === "not-arrived").length;
-
-    if (notArrived > 0) {
-      return {
-        status: "warning",
-        text: `${notArrived} người chưa đến`,
-        color: "text-red-600",
-      };
-    } else if (checkedIn > 0) {
-      return {
-        status: "active",
-        text: `${checkedIn} người đang làm`,
-        color: "text-blue-600",
-      };
-    } else {
-      return {
-        status: "completed",
-        text: "Ca làm hoàn thành",
-        color: "text-green-600",
-      };
+  const getShiftStatus = (hasApplicants: boolean, applicantsCount: number) => {
+    if (!hasApplicants) {
+      return { status: "warning", text: "Chưa có ai ứng tuyển", color: "text-red-600" };
     }
+    return { status: "active", text: `${applicantsCount} ứng viên`, color: "text-blue-600" };
   };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Quản lý tiến độ lao động
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900">Quản lý tiến độ lao động</h1>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm text-gray-600">Cập nhật real-time</span>
@@ -163,14 +87,9 @@ export default function ProgressManagement() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ngày
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Ngày</label>
             <div className="relative">
-              <Calendar
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={16}
-              />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="date"
                 value={selectedDate}
@@ -181,9 +100,7 @@ export default function ProgressManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Khu vực
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Khu vực</label>
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
@@ -198,66 +115,53 @@ export default function ProgressManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nhà tuyển dụng
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nhà tuyển dụng</label>
             <select
               value={employerFilter}
               onChange={(e) => setEmployerFilter(e.target.value)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
             >
               <option value="all">Tất cả NTD</option>
-              <option value="abc">Nhà hàng ABC</option>
-              <option value="xyz">Công ty Logistics XYZ</option>
             </select>
           </div>
 
           <div className="flex items-end">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full">
-              Lọc kết quả
-            </button>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full">Lọc kết quả</button>
           </div>
         </div>
       </div>
 
       {/* Work Shifts */}
       <div className="space-y-6">
-        {workShifts.map((shift) => {
-          const shiftStatus = getShiftStatus(shift.workers);
+        {loading && <div className="text-gray-600">Đang tải...</div>}
+        {error && <div className="text-red-600">{error}</div>}
+        {jobs.map((job) => {
+          const shiftStatus = getShiftStatus(!!job.applicants?.length, job.applicants?.length || 0);
 
           return (
-            <div
-              key={shift.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200"
-            >
+            <div key={job._id} className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {shift.jobTitle}
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
                       <div className="flex items-center">
                         <User size={16} className="mr-1" />
-                        {shift.employer}
+                        {job.employer?.name || "Nhà tuyển dụng"}
                       </div>
                       <div className="flex items-center">
                         <MapPin size={16} className="mr-1" />
-                        {shift.location}
+                        {job.address || job.location}
                       </div>
                       <div className="flex items-center">
                         <Clock size={16} className="mr-1" />
-                        {shift.shift}
+                        {(job.startTime || "—") + " - " + (job.endTime || "—")}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-medium ${shiftStatus.color}`}>
-                      {shiftStatus.text}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {shift.workers.length} lao động
-                    </p>
+                    <p className={`text-sm font-medium ${shiftStatus.color}`}>{shiftStatus.text}</p>
+                    <p className="text-xs text-gray-500 mt-1">{job.applicants?.length || 0} lao động</p>
                   </div>
                 </div>
               </div>
@@ -267,58 +171,41 @@ export default function ProgressManagement() {
                   <table className="min-w-full">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Lao động
-                        </th>
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Trạng thái
-                        </th>
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Check-in
-                        </th>
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Check-out
-                        </th>
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Hành động
-                        </th>
+                        <th className="text-left py-2 text-sm font-medium text-gray-700">Lao động</th>
+                        <th className="text-left py-2 text-sm font-medium text-gray-700">Trạng thái</th>
+                        <th className="text-left py-2 text-sm font-medium text-gray-700">Check-in</th>
+                        <th className="text-left py-2 text-sm font-medium text-gray-700">Check-out</th>
+                        <th className="text-left py-2 text-sm font-medium text-gray-700">Hành động</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {shift.workers.map((worker) => (
-                        <tr key={worker.id} className="hover:bg-gray-50">
+                      {(job.applicants || []).map((app: any) => (
+                        <tr key={app._id} className="hover:bg-gray-50">
                           <td className="py-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {worker.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ID: #{worker.id}
-                            </div>
+                            <div className="text-sm font-medium text-gray-900">{app.worker?.name || "—"}</div>
+                            <div className="text-xs text-gray-500">{app.worker?.email || ""}</div>
                           </td>
                           <td className="py-3">
-                            {getWorkerStatusBadge(worker.status)}
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">đã ứng tuyển</span>
                           </td>
-                          <td className="py-3 text-sm text-gray-900">
-                            {worker.checkinTime || "-"}
-                          </td>
-                          <td className="py-3 text-sm text-gray-900">
-                            {worker.checkoutTime || "-"}
-                          </td>
+                          <td className="py-3 text-sm text-gray-900">-</td>
+                          <td className="py-3 text-sm text-gray-900">-</td>
                           <td className="py-3">
-                            <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                              Liên hệ
-                            </button>
+                            <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Liên hệ</button>
                           </td>
                         </tr>
                       ))}
+                      {(!job.applicants || job.applicants.length === 0) && (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center text-gray-600">Chưa có ai ứng tuyển</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
-                    Cập nhật lần cuối: {new Date().toLocaleTimeString("vi-VN")}
-                  </div>
+                  <div className="text-sm text-gray-600">Cập nhật lần cuối: {new Date().toLocaleTimeString("vi-VN")}</div>
                   <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                     <Send size={16} className="mr-2" />
                     Can thiệp
@@ -371,9 +258,7 @@ export default function ProgressManagement() {
         <div className="bg-yellow-50 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-yellow-600">
-                Cần can thiệp
-              </p>
+              <p className="text-sm font-medium text-yellow-600">Cần can thiệp</p>
               <p className="text-2xl font-bold text-yellow-900">3</p>
             </div>
             <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">

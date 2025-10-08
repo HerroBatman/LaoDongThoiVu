@@ -161,7 +161,7 @@ export async function getWorkers(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  return api.get<{ data: WorkerDto[]; pagination: any }>(`/admin/workers?${queryParams.toString()}`);
+  return api.get<{ data: WorkerDto[]; pagination: any; stats: any }>(`/admin/workers?${queryParams.toString()}`);
 }
 
 // Get employers with pagination and filters
@@ -181,7 +181,7 @@ export async function getEmployers(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  return api.get<{ data: EmployerDto[]; pagination: any }>(`/admin/employers?${queryParams.toString()}`);
+  return api.get<{ data: EmployerDto[]; pagination: any; stats: any }>(`/admin/employers?${queryParams.toString()}`);
 }
 
 // Approve user account

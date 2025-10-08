@@ -20,12 +20,8 @@ app.use(cookieParser())
 // CORS middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-    ],
+    // Allow all local origins during development to avoid frequent CORS edits
+    origin: true,
     credentials: true,
   })
 );

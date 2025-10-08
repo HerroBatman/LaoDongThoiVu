@@ -2,7 +2,7 @@ import express from "express";
 import { ntdController } from "../controllers/nhatuyendung.controller.js";
 import { requireNhaTuyenDung } from "../middleware/nhatuyendungAuth.js";
 import { listSkills } from "../controllers/admin.controller.js";
-import { createJob, listMyJobs, getMyJobDetail, updateMyJob, deleteMyJob } from "../controllers/employer.controller.js";
+import { createJob, listMyJobs, getMyJobDetail, updateMyJob, deleteMyJob, listMyJobsProgress, markApplicantAttendance } from "../controllers/employer.controller.js";
 
 const router = express.Router();
 
@@ -26,6 +26,10 @@ router.get("/jobs", requireNhaTuyenDung, listMyJobs);
 router.get("/jobs/:id", requireNhaTuyenDung, getMyJobDetail);
 router.put("/jobs/:id", requireNhaTuyenDung, updateMyJob);
 router.delete("/jobs/:id", requireNhaTuyenDung, deleteMyJob);
+// Progress view: open jobs with applicants (applied by default)
+router.get("/jobs-progress", requireNhaTuyenDung, listMyJobsProgress);
+// Attendance actions
+router.post("/applications/:id/attendance", requireNhaTuyenDung, markApplicantAttendance);
 
 export const nhaTuyenDungRoutes = router;
 
